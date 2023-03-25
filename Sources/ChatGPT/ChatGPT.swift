@@ -31,22 +31,6 @@ public struct ChatGPT {
         self.headers = headers
     }
 
-    public enum Model: Hashable, CustomStringConvertible {
-        case gpt_3_5_turbo
-        case gpt_4
-        case custom(name: String)
-        public var description: String {
-            switch self {
-            case .gpt_3_5_turbo:
-                return "gpt-3.5-turbo"
-            case .gpt_4:
-                return "gpt-4"
-            case .custom(let name):
-                return name
-            }
-        }
-    }
-        
     private func prepareRequest(from history: [Message], with option: Option, stream: Bool) -> URLRequest {
         let body = Conversation(history, with: option, stream: stream)
         let address = baseURL + path
@@ -58,134 +42,6 @@ public struct ChatGPT {
         for header in headers { request.setValue(header.value, forHTTPHeaderField: header.key) }
         request.httpBody = try! jsonEncoder.encode(body)
         return request
-    }
-    
-    public struct Option {
-        public var topProbabilityMass: Double? = 0
-        public var frequencyPenalty: Double? = 0
-        public var presencePenalty: Double? = 0
-        public var temperature: Double? = 1
-        public var user: String? = nil
-        public var stop: [String]? = nil
-        public var maxTokens: Int? = nil
-        public var choices: Int? = 1
-        public var model: Model = .gpt_3_5_turbo
-        
-        public init(
-            topProbabilityMass: Double? = 0,
-            frequencyPenalty: Double? = 0,
-            presencePenalty: Double? = 0,
-            temperature: Double? = 1,
-            user: String? = nil,
-            stop: [String]? = nil,
-            maxTokens: Int? = nil,
-            choices: Int? = 1,
-            model: Model = .gpt_3_5_turbo
-        ) {
-            self.topProbabilityMass = topProbabilityMass
-            self.frequencyPenalty = frequencyPenalty
-            self.presencePenalty = presencePenalty
-            self.temperature = temperature
-            self.user = user
-            self.stop = stop
-            self.maxTokens = maxTokens
-            self.choices = choices
-            self.model = model
-        }
-    }
-    
-    public struct Conversation: Encodable {
-        let topProbabilityMass: Double?
-        let frequencyPenalty: Double?
-        let presencePenalty: Double?
-        let temperature: Double?
-        let user: String?
-        let stop: [String]?
-        let maxTokens: Int?
-        let choices: Int?
-        let model: String
-        let messages: [Message]
-        let stream: Bool
-        
-        enum CodingKeys: String, CodingKey {
-            case user
-            case stop
-            case model
-            case stream
-            case choices = "n"
-            case messages
-            case maxTokens = "max_tokens"
-            case temperature
-            case presencePenalty = "presence_penalty"
-            case frequencyPenalty = "frequency_penalty"
-            case topProbabilityMass = "top_p"
-        }
-        
-        init(_ history: [Message], with option: Option, stream: Bool) {
-            messages = history
-            user = option.user
-            stop = option.stop
-            model = option.model.description
-            choices = option.choices
-            maxTokens = option.maxTokens
-            temperature = option.temperature
-            presencePenalty = option.presencePenalty
-            frequencyPenalty = option.frequencyPenalty
-            topProbabilityMass = option.topProbabilityMass
-            self.stream = stream
-        }
-    }
-    
-    public struct Result: Codable {
-        public let model: String?
-        public let usage: Usage
-        public let object: String
-        public let choices: [Choice]
-    }
-    
-    public struct Choice: Codable {
-        public let message: Message
-    }
-    
-    public struct ResultDelta: Codable {
-        public let model: String?
-        public let object: String
-        public let choices: [ChoiceDelta]
-    }
-    
-    public struct ChoiceDelta: Codable {
-        public let delta: MessageDelta
-    }
-    
-    public enum Role: String, Codable {
-        case system, user, assistant
-    }
-    
-    public struct Message: Codable {
-        public let role: Role
-        public var content: String
-        
-        public init(role: Role = .user, content: String) {
-            self.role = role
-            self.content = content
-        }
-    }
-    
-    public struct MessageDelta: Codable {
-        public let role: Role?
-        public var content: String?
-    }
-    
-    public struct Usage: Codable {
-        public let totalTokens: Int
-        public let promptTokens: Int
-        public let completionTokens: Int
-        
-        enum CodingKeys: String, CodingKey {
-            case totalTokens = "total_tokens"
-            case promptTokens = "prompt_tokens"
-            case completionTokens = "completion_tokens"
-        }
     }
     
     public enum Error: Swift.Error {
@@ -268,7 +124,151 @@ public struct ChatGPT {
         } catch { throw Error.decoding(String(describing: error)) }
     }
     
-    public typealias ResultStream = AsyncThrowingStream<ResultDelta, Swift.Error>
-    public typealias StringStream = AsyncThrowingStream<String, Swift.Error>
 }
 
+public typealias ResultStream = AsyncThrowingStream<ResultDelta, Swift.Error>
+public typealias StringStream = AsyncThrowingStream<String, Swift.Error>
+
+public struct Conversation: Encodable {
+    let topProbabilityMass: Double?
+    let frequencyPenalty: Double?
+    let presencePenalty: Double?
+    let temperature: Double?
+    let user: String?
+    let stop: [String]?
+    let maxTokens: Int?
+    let choices: Int?
+    let model: String
+    let messages: [Message]
+    let stream: Bool
+    
+    enum CodingKeys: String, CodingKey {
+        case user
+        case stop
+        case model
+        case stream
+        case choices = "n"
+        case messages
+        case maxTokens = "max_tokens"
+        case temperature
+        case presencePenalty = "presence_penalty"
+        case frequencyPenalty = "frequency_penalty"
+        case topProbabilityMass = "top_p"
+    }
+    
+    init(_ history: [Message], with option: Option, stream: Bool) {
+        messages = history
+        user = option.user
+        stop = option.stop
+        model = option.model.description
+        choices = option.choices
+        maxTokens = option.maxTokens
+        temperature = option.temperature
+        presencePenalty = option.presencePenalty
+        frequencyPenalty = option.frequencyPenalty
+        topProbabilityMass = option.topProbabilityMass
+        self.stream = stream
+    }
+}
+
+public struct Option {
+    public var topProbabilityMass: Double? = 0
+    public var frequencyPenalty: Double? = 0
+    public var presencePenalty: Double? = 0
+    public var temperature: Double? = 1
+    public var user: String? = nil
+    public var stop: [String]? = nil
+    public var maxTokens: Int? = nil
+    public var choices: Int? = 1
+    public var model: Model = .gpt_3_5_turbo
+    
+    public init(
+        topProbabilityMass: Double? = 0,
+        frequencyPenalty: Double? = 0,
+        presencePenalty: Double? = 0,
+        temperature: Double? = 1,
+        user: String? = nil,
+        stop: [String]? = nil,
+        maxTokens: Int? = nil,
+        choices: Int? = 1,
+        model: Model = .gpt_3_5_turbo
+    ) {
+        self.topProbabilityMass = topProbabilityMass
+        self.frequencyPenalty = frequencyPenalty
+        self.presencePenalty = presencePenalty
+        self.temperature = temperature
+        self.user = user
+        self.stop = stop
+        self.maxTokens = maxTokens
+        self.choices = choices
+        self.model = model
+    }
+}
+
+public enum Model: Hashable, CustomStringConvertible {
+    case gpt_3_5_turbo
+    case gpt_4
+    case custom(name: String)
+    public var description: String {
+        switch self {
+        case .gpt_3_5_turbo:
+            return "gpt-3.5-turbo"
+        case .gpt_4:
+            return "gpt-4"
+        case .custom(let name):
+            return name
+        }
+    }
+}
+
+public struct Result: Codable {
+    public let model: String?
+    public let usage: Usage
+    public let object: String
+    public let choices: [Choice]
+}
+
+public struct Choice: Codable {
+    public let message: Message
+}
+
+public struct ResultDelta: Codable {
+    public let model: String?
+    public let object: String
+    public let choices: [ChoiceDelta]
+}
+
+public struct ChoiceDelta: Codable {
+    public let delta: MessageDelta
+}
+
+public enum Role: String, Codable {
+    case system, user, assistant
+}
+
+public struct Message: Codable {
+    public let role: Role
+    public var content: String
+    
+    public init(role: Role = .user, content: String) {
+        self.role = role
+        self.content = content
+    }
+}
+
+public struct MessageDelta: Codable {
+    public let role: Role?
+    public var content: String?
+}
+
+public struct Usage: Codable {
+    public let totalTokens: Int
+    public let promptTokens: Int
+    public let completionTokens: Int
+    
+    enum CodingKeys: String, CodingKey {
+        case totalTokens = "total_tokens"
+        case promptTokens = "prompt_tokens"
+        case completionTokens = "completion_tokens"
+    }
+}
